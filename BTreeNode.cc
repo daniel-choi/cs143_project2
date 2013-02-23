@@ -2,6 +2,24 @@
 
 using namespace std;
 
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                            BTLeafNode Implementation                       //
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+ * LeafNode Buffer
+ * Equivalent to int buffer[256];
+ _______________________________________________________________
+ |  0   |  1   |   2  |   3  |   4  |   5  |   6  | ...  | 255  |
+ | key  | pid  | sid  |  key | pid  |  sid | key  | ...  | pid  |
+ |______|______|______|______|______|______|______|______|______|
+ 
+ */
+
 /*
  * Read the content of the node from the page pid in the PageFile pf.
  * @param pid[IN] the PageId to read
@@ -9,8 +27,14 @@ using namespace std;
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::read(PageId pid, const PageFile& pf)
-{ return 0; }
+{
+    RC  rc;
+    if ((rc = pf.read(pid, buffer)) < 0) {
+        return rc;
+    }
     
+    return 0; }
+
 /*
  * Write the content of the node to the page pid in the PageFile pf.
  * @param pid[IN] the PageId to write to
@@ -18,14 +42,22 @@ RC BTLeafNode::read(PageId pid, const PageFile& pf)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::write(PageId pid, PageFile& pf)
-{ return 0; }
+{ 
+    RC rc;
+    if ((rc = pf.write(pid, buffer)) < 0)
+        return rc;
+    
+    return 0; 
+}
 
 /*
  * Return the number of keys stored in the node.
  * @return the number of keys in the node
  */
 int BTLeafNode::getKeyCount()
-{ return 0; }
+{
+    return keyCount; 
+}
 
 /*
  * Insert a (key, rid) pair to the node.
@@ -34,7 +66,34 @@ int BTLeafNode::getKeyCount()
  * @return 0 if successful. Return an error code if the node is full.
  */
 RC BTLeafNode::insert(int key, const RecordId& rid)
-{ return 0; }
+{
+    if(checkFull())
+        return -1;
+    // Set eid to last buffer
+    int eidCandidate = keyCount;
+    for (int i = 0; i < keyCount; i++) {
+        int readKey;
+        RecordId readRid;
+        // Read entry i
+        readEntry(i, readKey, readRid);
+        // If read entry key is greater than the i's key, new entry needs to put before i entry.
+        if(readKey >= key) {
+            eidCandidate = i;
+            break;
+        }
+    }
+    // If new key is the biggest, put at the end.
+    // If not shift all the entires by one and put it in the eidCandidate
+    if(eidCandidate != keyCount)
+        shift(eidCandidate);
+    insertToBuffer(key, rid, eidCandidate);
+    
+    // Update key count
+    keyCount ++;
+    
+    
+    return 0; 
+}
 
 /*
  * Insert the (key, rid) pair to the node
@@ -48,7 +107,13 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
  */
 RC BTLeafNode::insertAndSplit(int key, const RecordId& rid, 
                               BTLeafNode& sibling, int& siblingKey)
-{ return 0; }
+{ 
+    insert(key, rid);
+    
+    
+    RecordId readRid;
+    sibling.readEntry(0, siblingKey, readRid);
+    return 0; }
 
 /*
  * Find the entry whose key value is larger than or equal to searchKey
@@ -59,7 +124,26 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::locate(int searchKey, int& eid)
-{ return 0; }
+{ 
+    
+    // If there is no entry or if eid is not valid, or if eid is larger than key count
+    // Return error
+    if (keyCount <=0 || eid < 0 || eid >= keyCount)
+        return -1;
+    
+    // Loop through entries and search for the key that are greater or equal to searchKey
+    // Entries are sorted so we can avoid leftovers if we found the key
+    for(int i = 0; i < keyCount; i++){
+        int keyEntry;
+        RecordId ridEntry;
+        readEntry(i, keyEntry, ridEntry);
+        if(keyEntry >= searchKey) {
+            eid = i;
+            return 0;
+        }
+    }
+    return -1;
+}
 
 /*
  * Read the (key, rid) pair from the eid entry.
@@ -69,14 +153,35 @@ RC BTLeafNode::locate(int searchKey, int& eid)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
-{ return 0; }
+{ 
+    // If there is no entry or if eid is not valid, or if eid is larger than key count
+    // Return error
+    if(keyCount <= 0 || eid < 0 || eid >= keyCount)
+        return -1;
+    
+    // Convert buffer pointer from char to int
+    int *intBufferPtr = (int *) buffer;
+    
+    // Read from the buffer
+    int index = eid * 3;
+    key = *(intBufferPtr + index);
+    rid.pid = *(intBufferPtr + index + 1);
+    rid.sid = *(intBufferPtr + index + 2);
+    
+    return 0; 
+}
 
 /*
  * Return the pid of the next slibling node.
  * @return the PageId of the next sibling node 
  */
 PageId BTLeafNode::getNextNodePtr()
-{ return 0; }
+{ 
+    int *intBufferPtr = (int *)buffer;
+    
+    // Return the last element from the buffer which is PageId of the next sibling node
+    return (*(intBufferPtr + 255));
+}
 
 /*
  * Set the pid of the next slibling node.
@@ -84,7 +189,68 @@ PageId BTLeafNode::getNextNodePtr()
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTLeafNode::setNextNodePtr(PageId pid)
-{ return 0; }
+{ 
+    int *intBufferPtr = (int *)buffer;
+    // Set last element of the buffer to the PageId of next sibling node
+    *(intBufferPtr + 255) = pid;
+    return 0; 
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                            BTLeafNode Helper Functions                     //
+////////////////////////////////////////////////////////////////////////////////
+
+//Convert integer to dynamic array of characters. 
+//Return 0 if success -1 otherwise
+int BTLeafNode::insertToBuffer(const int key, const RecordId rid, const int eid)
+{
+    if(checkFull())
+        return -1;
+    int* intBufferPtr = (int*) buffer;
+    int index = eid*3;
+    *(intBufferPtr + index) = key;
+    *(intBufferPtr + index + 1) = rid.pid;
+    *(intBufferPtr + index + 2) = rid.sid;
+    return 0;
+}
+bool BTLeafNode::checkFull()
+{
+    //Max key count, excluding last entry of the leaf node (page id)
+    if(keyCount >= g_maxKeyCount)
+        return true;
+    return false;
+    
+}
+//Shifts all the elements from eid by one entry
+int BTLeafNode::shift(const int eid)
+{
+    int * intBufferPtr = (int *)buffer;
+    for(int i = keyCount-1; i >= eid; i--) 
+    {
+        int readKey;
+        RecordId readRid;
+        // Read entry for eid = i
+        if(readEntry(i, readKey, readRid) != 0)
+        {
+            return -1;
+        }
+        // Insert to buffer for eid = i+1
+        if(insertToBuffer(readKey, readRid, i+1))
+        {
+            return -1;
+        }
+    }
+    return 0;
+    
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+//                            BTNonLeafNode Implementation                    //
+////////////////////////////////////////////////////////////////////////////////
 
 /*
  * Read the content of the node from the page pid in the PageFile pf.
@@ -94,7 +260,7 @@ RC BTLeafNode::setNextNodePtr(PageId pid)
  */
 RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
 { return 0; }
-    
+
 /*
  * Write the content of the node to the page pid in the PageFile pf.
  * @param pid[IN] the PageId to write to
@@ -153,3 +319,5 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
  */
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 { return 0; }
+
+
