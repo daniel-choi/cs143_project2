@@ -67,15 +67,18 @@ int BTLeafNode::getKeyCount()
  */
 RC BTLeafNode::insert(int key, const RecordId& rid)
 {
+
+    RC rc;
     if(checkFull())
-        return -1;
+        return RC_NODE_FULL;
     // Set eid to last buffer
     int eidCandidate = keyCount;
     for (int i = 0; i < keyCount; i++) {
         int readKey;
         RecordId readRid;
         // Read entry i
-        readEntry(i, readKey, readRid);
+        if(rc = readEntry(i, readKey, readRid) < 0)
+          return rc;
         // If read entry key is greater than the i's key, new entry needs to put before i entry.
         if(readKey >= key) {
             eidCandidate = i;
@@ -86,11 +89,11 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
     // If not shift all the entires by one and put it in the eidCandidate
     if(eidCandidate != keyCount)
         shift(eidCandidate);
-    insertToBuffer(key, rid, eidCandidate);
+    if(rc = insertToBuffer(key, rid, eidCandidate) < 0)
+      return rc;
     
     // Update key count
     keyCount ++;
-    
     
     return 0; 
 }
@@ -125,24 +128,25 @@ RC BTLeafNode::insertAndSplit(int key, const RecordId& rid,
  */
 RC BTLeafNode::locate(int searchKey, int& eid)
 { 
-    
+    RC rc; 
     // If there is no entry or if eid is not valid, or if eid is larger than key count
     // Return error
     if (keyCount <=0 || eid < 0 || eid >= keyCount)
-        return -1;
+        return RC_INVALID_CURSOR;
     
     // Loop through entries and search for the key that are greater or equal to searchKey
     // Entries are sorted so we can avoid leftovers if we found the key
     for(int i = 0; i < keyCount; i++){
         int keyEntry;
         RecordId ridEntry;
-        readEntry(i, keyEntry, ridEntry);
+        if (rc = readEntry(i, keyEntry, ridEntry) <0)
+          return rc;
         if(keyEntry >= searchKey) {
             eid = i;
             return 0;
         }
     }
-    return -1;
+    return RC_NO_SUCH_RECORD;
 }
 
 /*
@@ -157,7 +161,7 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
     // If there is no entry or if eid is not valid, or if eid is larger than key count
     // Return error
     if(keyCount <= 0 || eid < 0 || eid >= keyCount)
-        return -1;
+        return RC_INVALID_CURSOR;
     
     // Convert buffer pointer from char to int
     int *intBufferPtr = (int *) buffer;
@@ -204,10 +208,10 @@ RC BTLeafNode::setNextNodePtr(PageId pid)
 
 //Convert integer to dynamic array of characters. 
 //Return 0 if success -1 otherwise
-int BTLeafNode::insertToBuffer(const int key, const RecordId rid, const int eid)
+RC BTLeafNode::insertToBuffer(const int key, const RecordId rid, const int eid)
 {
     if(checkFull())
-        return -1;
+        return RC_NODE_FULL;
     int* intBufferPtr = (int*) buffer;
     int index = eid*3;
     *(intBufferPtr + index) = key;
@@ -224,23 +228,20 @@ bool BTLeafNode::checkFull()
     
 }
 //Shifts all the elements from eid by one entry
-int BTLeafNode::shift(const int eid)
+RC BTLeafNode::shift(const int eid)
 {
+    RC rc;
     int * intBufferPtr = (int *)buffer;
     for(int i = keyCount-1; i >= eid; i--) 
     {
         int readKey;
         RecordId readRid;
         // Read entry for eid = i
-        if(readEntry(i, readKey, readRid) != 0)
-        {
-            return -1;
-        }
+        if(rc = readEntry(i, readKey, readRid) < 0)
+            return rc;
         // Insert to buffer for eid = i+1
-        if(insertToBuffer(readKey, readRid, i+1))
-        {
-            return -1;
-        }
+        if(rc = insertToBuffer(readKey, readRid, i+1) < 0)
+            return rc;
     }
     return 0;
     
