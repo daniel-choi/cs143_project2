@@ -39,6 +39,7 @@ private:
     char buffer[PageFile::PAGE_SIZE];
     int keyCount;
     RC insertToBuffer(const int key, const RecordId rid, const int eid);
+    RC deleteFromBuffer(const int eid);
     bool checkFull();
     RC shift(const int eid);
 }; 
