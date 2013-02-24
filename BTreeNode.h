@@ -48,6 +48,16 @@ private:
 /**
  * BTNonLeafNode: The class representing a B+tree nonleaf node.
  */
+
+/*  
+*   Unspanned Method:
+*      NonLeafNode: [ pid | key | pid | ... | pid ]
+*      1024/4 = 256 //int array
+*      256 - 1// last pid
+*      255/2= 127 //pairs of [pid | key] entries
+*      1 unused element.
+*/
+const int g_maxKeyCount_NonLeafNode = 127;
 class BTNonLeafNode {
 public:
     /**

@@ -371,4 +371,19 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 { return 0; }
 
+////////////////////////////////////////////////////////////////////////////////
+//                            BTNonLeafNode Helper Functions                     //
+////////////////////////////////////////////////////////////////////////////////
 
+ /*
+ * Checks node if full
+ * @return 0 if successful. Return an error code if there is an error.
+ */
+bool BTNonLeafNode::checkFull()
+{
+  //Max key count, excluding last entry of the leaf node (page id)
+  if(keyCount >= g_maxKeyCount)
+    return true;
+  else
+    return false;
+}
