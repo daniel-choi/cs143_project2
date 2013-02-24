@@ -324,7 +324,9 @@ RC BTNonLeafNode::write(PageId pid, PageFile& pf)
  * @return the number of keys in the node
  */
 int BTNonLeafNode::getKeyCount()
-{ return 0; }
+{ 
+  return keyCount;
+}
 
 
 /*
