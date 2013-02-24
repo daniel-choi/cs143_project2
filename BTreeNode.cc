@@ -298,7 +298,7 @@ RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
 		return rc;
 	else
 		return RC_FILE_READ_FAILED;
-	return 0;
+  return 0;
 }
 
 /*
@@ -308,7 +308,15 @@ RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::write(PageId pid, PageFile& pf)
-{ return 0; }
+{ 
+  RC rc;
+  if ((rc = pf.write(pid, buffer)) < 0)
+    return rc;
+  else
+    return RC_FILE_WRITE_FAILED;
+
+  return 0; 
+}
 
 /*
  * Return the number of keys stored in the node.
