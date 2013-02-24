@@ -336,7 +336,13 @@ int BTNonLeafNode::getKeyCount()
  * @return 0 if successful. Return an error code if the node is full.
  */
 RC BTNonLeafNode::insert(int key, PageId pid)
-{ return 0; }
+{
+  RC rc;
+  if(checkFull())
+    return RC_NODE_FULL;
+
+  return 0;
+}
 
 /*
  * Insert the (key, pid) pair to the node
@@ -349,7 +355,20 @@ RC BTNonLeafNode::insert(int key, PageId pid)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, int& midKey)
-{ return 0; }
+{ 
+  /*
+  
+  1. split node in half A and B
+  2. Get B's first key and push it up one depth
+  3. 
+
+  */
+  RC rc;
+  if(!checkFull()) // This action should only be done
+    return -1; //RC_INVALID_FILE_FORMAT; // Not sure?
+
+  return 0;
+}
 
 /*
  * Given the searchKey, find the child-node pointer to follow and
@@ -359,7 +378,13 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
-{ return 0; }
+{ 
+  /*
+  Based on searchKey -> examine until searchKey is < key of node
+  */
+  return 0; 
+
+}
 
 /*
  * Initialize the root node with (pid1, key, pid2).
@@ -369,7 +394,15 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
-{ return 0; }
+{ 
+  /*
+  Root initizlization on Buffer:
+  [ pid1 | key | pid2 ]
+  pid1 = with an index of 0 on buffer
+
+  */
+  return 0; 
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 //                            BTNonLeafNode Helper Functions                     //
