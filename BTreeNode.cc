@@ -293,11 +293,12 @@ RC BTLeafNode::deleteFromBuffer(const int eid)
  */
 RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
 { 
-	RC rc;
-	if ((rc = pf.read(pid, buffer)) < 0)
-		return rc;
-	else
-		return RC_FILE_READ_FAILED;
+  RC rc;
+  if ((rc = pf.read(pid, buffer)) < 0)
+    return rc;
+  else
+    return RC_FILE_READ_FAILED;
+  
   return 0;
 }
 
