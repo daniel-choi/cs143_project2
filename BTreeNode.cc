@@ -292,7 +292,14 @@ RC BTLeafNode::deleteFromBuffer(const int eid)
  * @return 0 if successful. Return an error code if there is an error.
  */
 RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
-{ return 0; }
+{ 
+	RC rc;
+	if ((rc = pf.read(pid, buffer)) < 0)
+		return rc;
+	else
+		return RC_FILE_READ_FAILED;
+	return 0;
+}
 
 /*
  * Write the content of the node to the page pid in the PageFile pf.

@@ -120,6 +120,7 @@ private:
      * that contains the node.
      */
     char buffer[PageFile::PAGE_SIZE];
+    int keyCount;
 }; 
 
 #endif /* BTNODE_H */
