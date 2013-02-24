@@ -382,7 +382,7 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 bool BTNonLeafNode::checkFull()
 {
   //Max key count, excluding last entry of the leaf node (page id)
-  if(keyCount >= g_maxKeyCount)
+  if(keyCount >= g_maxKeyCount_NonLeafNode)
     return true;
   else
     return false;
