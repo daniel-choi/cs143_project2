@@ -394,9 +394,12 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
       return rc;
   }
 
-  PageId Pid;
-  //if (rc = sibling.readEntry(0, midkey, Pid) < 0)
-  //  return rc;
+  /* midKey:- //the key chosen after overflow is split.
+  *                             _push_up_
+  * [pidJ|40|pidK|50|pidL| ...] [pidX|190|pidY|250|pidZ| ...]
+  *                             mid key = 190
+  */
+  midKey = *((bufferPtr+1) + 2*numStay); // first key of second node split
   return 0; 
 }
 
