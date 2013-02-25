@@ -337,6 +337,30 @@ RC BTNonLeafNode::insert(int key, PageId pid)
   if(checkFull())
     return RC_NODE_FULL;
 
+  //Convert buffer pointer from char to int
+  int *bufferPtr = (int *) buffer;
+
+  //loop until end of last pid?
+  int i = 0;
+  for(; i < keyCount; i++){
+    if (*((bufferPtr+1) + 2*i) > key)
+    {
+      // key is not at the end
+      if(key != keyCount)
+        shift(*((bufferPtr+1) + 2*i));
+      
+      *((bufferPtr) + 2*i) = pid;
+      *((bufferPtr+1) + 2*i) = key; // inc address and assign it
+
+      keyCount ++;
+      return 0;
+    }
+  }
+  //if not within the keyCount, insert at the end.
+  *((bufferPtr) + 2*i) = pid;
+  *((bufferPtr+1) + 2*i) = key; // inc address and assign it
+  keyCount ++;
+
   return 0;
 }
 
@@ -391,14 +415,14 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
   int i = 0;
   for(; i < keyCount; i++){
     // key found
-    if (*((buffterPtr+1) + 2*i) > searchKey)
+    if (*((bufferPtr+1) + 2*i) > searchKey)
     {
-      pid = *((buffterPtr) + 2*i);
+      pid = *((bufferPtr) + 2*i);
       return 0;
     }
   }
   // gone everywhere and still could not find key greater than searchkey.
-  pid = *((buffterPtr) + 2*i);
+  pid = *((bufferPtr) + 2*i);
   return 0; 
 }
 
@@ -421,10 +445,11 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
   //Convert buffer pointer from char to int
   int *bufferPtr = (int *) buffer;
 
-  *buffterPtr = pid1;
-  *(buffterPtr+1) = key; // inc address and assign it
-  *(buffterPtr+2) = pid2; // inc address and assign it
+  *bufferPtr = pid1;
+  *(bufferPtr+1) = key; // inc address and assign it
+  *(bufferPtr+2) = pid2; // inc address and assign it
   
+  keyCount++; // first root insert
   return 0; 
 }
 
@@ -444,3 +469,18 @@ bool BTNonLeafNode::checkFull()
   else
     return false;
 }
+
+//Shifts all the elements from loc by one entry
+RC BTNonLeafNode::shift(const int loc)
+{
+  RC rc;
+  int * intBufferPtr = (int *)buffer;
+  for(int i = keyCount-1; i >= loc; i--) 
+  {
+    int index = loc*2;
+    *(intBufferPtr + index + 2) = *(intBufferPtr + index); 
+    *(intBufferPtr + index + 3) = *(intBufferPtr + index + 1);
+  }
+  return 0;
+}
+
