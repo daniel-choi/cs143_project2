@@ -132,7 +132,8 @@ private:
     char buffer[PageFile::PAGE_SIZE];
     int keyCount;
     bool checkFull();
-    RC shift(const int eid);
+    RC shift(const int loc);
+    RC deleteFromBuffer(const int loc);
 }; 
 
 #endif /* BTNODE_H */

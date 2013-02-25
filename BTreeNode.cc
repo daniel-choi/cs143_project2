@@ -376,18 +376,28 @@ RC BTNonLeafNode::insert(int key, PageId pid)
  */
 RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, int& midKey)
 { 
-  /*
-  
-  1. split node in half A and B
-  2. Get B's first key and push it up one depth
-  3. 
-
-  */
   RC rc;
-  if(!checkFull()) // This action should only be done
-    return -1; //RC_INVALID_FILE_FORMAT; // Not sure?
 
-  return 0;
+  int numMove = keyCount/2;
+  int numStay = keyCount - numMove;
+
+  if (rc = insert(key, pid) <0)
+    return rc;
+
+  for (int i = keyCount-1; i >= numStay; i--)
+  {
+    int readKey;
+
+    if (rc = sibling.insert(readKey, pid) < 0)
+      return rc;
+    if (rc = deleteFromBuffer(i) < 0)
+      return rc;
+  }
+
+  PageId Pid;
+  //if (rc = sibling.readEntry(0, midkey, Pid) < 0)
+  //  return rc;
+  return 0; 
 }
 
 /*
@@ -481,6 +491,19 @@ RC BTNonLeafNode::shift(const int loc)
     *(intBufferPtr + index + 2) = *(intBufferPtr + index); 
     *(intBufferPtr + index + 3) = *(intBufferPtr + index + 1);
   }
+  return 0;
+}
+
+RC BTNonLeafNode::deleteFromBuffer(const int loc)
+{
+  RC rc;
+  if(loc >= keyCount)
+    return RC_NO_SUCH_RECORD;
+
+  int* intBufferPtr = (int*) buffer;
+  int index = loc*2;
+  *(intBufferPtr + index) = -1;
+  *(intBufferPtr + index + 1) = -1;
   return 0;
 }
 
