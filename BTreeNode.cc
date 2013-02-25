@@ -378,8 +378,28 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
   /*
   Based on searchKey -> examine until searchKey is < key of node
   */
-  return 0; 
+  //Convert buffer pointer from char to int
+  int *bufferPtr = (int *) buffer;
 
+  // if no key, no point in travesing empty
+  if(keyCount <= 0)
+    return RC_INVALID_CURSOR;
+
+  // Loop through buffer and search for the key that are greater or equal to searchKey
+  // if found in buffer set it to pid and exit.
+  
+  int i = 0;
+  for(; i < keyCount; i++){
+    // key found
+    if (*((buffterPtr+1) + 2*i) > searchKey)
+    {
+      pid = *((buffterPtr) + 2*i);
+      return 0;
+    }
+  }
+  // gone everywhere and still could not find key greater than searchkey.
+  pid = *((buffterPtr) + 2*i);
+  return 0; 
 }
 
 /*
