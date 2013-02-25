@@ -297,9 +297,7 @@ RC BTNonLeafNode::read(PageId pid, const PageFile& pf)
   if ((rc = pf.read(pid, buffer)) < 0)
     return rc;
   else
-    return RC_FILE_READ_FAILED;
-  
-  return 0;
+    return 0;
 }
 
 /*
@@ -314,9 +312,7 @@ RC BTNonLeafNode::write(PageId pid, PageFile& pf)
   if ((rc = pf.write(pid, buffer)) < 0)
     return rc;
   else
-    return RC_FILE_WRITE_FAILED;
-
-  return 0; 
+    return 0; 
 }
 
 /*
@@ -400,7 +396,15 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
   [ pid1 | key | pid2 ]
   pid1 = with an index of 0 on buffer
 
+  default values of page values.
   */
+  //Convert buffer pointer from char to int
+  int *bufferPtr = (int *) buffer;
+
+  *buffterPtr = pid1;
+  *(buffterPtr+1) = key; // inc address and assign it
+  *(buffterPtr+2) = pid2; // inc address and assign it
+  
   return 0; 
 }
 
