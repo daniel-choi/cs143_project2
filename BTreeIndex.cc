@@ -18,6 +18,7 @@ using namespace std;
 BTreeIndex::BTreeIndex()
 {
     rootPid = -1;
+    treeHeight=0;
 }
 
 /*
@@ -30,7 +31,7 @@ BTreeIndex::BTreeIndex()
 RC BTreeIndex::open(const string& indexname, char mode)
 {
 	RC rc;
-	if ((rc = pf.read(indexname, mode)) < 0) {
+	if ((rc = pf.open(indexname, mode)) < 0) {
     	return rc;
  	}
 	return 0;
@@ -57,7 +58,34 @@ RC BTreeIndex::close()
  */
 RC BTreeIndex::insert(int key, const RecordId& rid)
 {
+	if(treeHeight == 0) {
+		createRoot(key, rid);
+	}
+
     return 0;
+}
+
+
+RC BTreeIndex::createRoot(const int key, const RecordId &rid)
+{
+	BTNonLeafNode *root = new BTNonLeafNode;
+	rootPid = pf.endPid();
+	BTLeafNode *ln1 = new BTLeafNode;
+	BTLeafNode *ln2 = new BTLeafNode;
+	ln2->insert(key, rid);
+	root->initializeRoot(1, key, 2);
+	ln1->setNextNodePtr(2);
+	root->write(rootPid, pf);
+	ln1->write(1, pf);
+	ln2->write(2, pf);
+}
+
+int insertionHelper(const int key, int n)
+{
+	if()
+
+
+
 }
 
 /*

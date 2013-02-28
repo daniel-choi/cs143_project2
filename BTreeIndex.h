@@ -94,6 +94,7 @@ class BTreeIndex {
  private:
   PageFile pf;         /// the PageFile used to store the actual b+tree in disk
 
+  RC createRoot(const int key, const RecordId &rid);
   PageId   rootPid;    /// the PageId of the root node
   int      treeHeight; /// the height of the tree
   /// Note that the content of the above two variables will be gone when
