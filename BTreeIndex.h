@@ -13,6 +13,7 @@
 #include "Bruinbase.h"
 #include "PageFile.h"
 #include "RecordFile.h"
+#include "BTreeNode.h"
              
 /**
  * The data structure to point to a particular entry at a b+tree leaf node.
