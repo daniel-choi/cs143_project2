@@ -135,10 +135,6 @@ int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageI
 		else
 			return 0;
 	}
-
-
-
-
 }
 
 /*
@@ -178,8 +174,15 @@ RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 	RC rc;
 	BTLeafNode *leafNode = new BTLeafNode;
 	leafNode -> read(cursor.pid, pf);
-	if(rc = (leafNode -> readEntry(cursor.eid, key, rid)) < 0)
+	if(rc = (leafNode -> readEntry(cursor.eid, key, rid)) < 0) 
 		return rc;
-	IndexCursor nextCursor;
-    return 0;
+	if(cursor.eid == (leafNode -> getKeyCount())-1) //If eid is the last entry in the node
+	{
+		cursor.pid = leafNode -> getNextNodePtr();
+		cursor.eid = 0;
+	}
+	else // If eid is not the last entry in the node.
+		cursor.eid++;
+	delete leafNode;
+	return 0;
 }
