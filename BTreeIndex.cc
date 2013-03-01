@@ -60,6 +60,17 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 {
 	if(treeHeight == 0) {
 		createRoot(key, rid);
+		treeHeight++;
+	}
+	PageId siblingPid;
+	int newRootKey;
+	if((newRootKey = insertionHelper(key, rid, 1, rootPid, siblingPid)) != 0){
+		//New root Node
+		BTNonLeafNode *newRoot = new BTNonLeafNode;
+		newRoot -> initializeRoot(rootPid, newRootKey, siblingPid);
+		rootPid = pf.endPid();
+		newRoot -> write(rootPid, pf);
+		treeHeight++;
 	}
 
     return 0;
@@ -80,9 +91,51 @@ RC BTreeIndex::createRoot(const int key, const RecordId &rid)
 	ln2->write(2, pf);
 }
 
-int insertionHelper(const int key, int n)
+int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageId pid, PageId &siblingPid)
 {
-	if()
+	// Not eqaul to tree height meaning we are in the NonLeafNode.
+	if(n != treeHeight) {
+		PageId tempPid;
+		BTNonLeafNode *tempNode = new BTNonLeafNode;
+		tempNode -> read(pid, pf);
+		tempNode -> locateChildPtr(key, tempPid);
+		int siblingKey;
+		if(siblingKey = insertionHelper(key, rid, n+1, tempPid, siblingPid) != 0)
+		{
+			if((tempNode -> insert(siblingKey, siblingPid)) < 0) {
+				int midKey;
+				BTNonLeafNode *siblingNode = new BTNonLeafNode;
+				tempNode -> insertAndSplit (siblingKey, siblingPid, *siblingNode, midKey);
+				siblingPid = pf.endPid();
+				siblingNode -> write(siblingPid, pf);
+
+				return midKey;
+			}
+			else
+				return 0;
+		}
+
+	}
+	// Eqaul to tree height meaning we are in the LeafNode. Insert key and rid in the leafNode and check if it overflows.
+	// If it overflows, return siblingKey to insert in the parentNode.
+	// If not return 0.
+	else if (n == treeHeight){
+		BTLeafNode *tempNode = new BTLeafNode;
+		tempNode -> read(pid, pf);
+		if((tempNode -> insert(key, rid)) < 0) {
+			BTLeafNode *siblingNode = new BTLeafNode;
+			int siblingKey;
+			tempNode -> insertAndSplit (key, rid, *siblingNode, siblingKey);
+			siblingPid = pf.endPid();
+			tempNode -> setNextNodePtr(siblingPid);
+			siblingNode -> write(siblingPid, pf);
+
+			return siblingKey;
+		}
+		else
+			return 0;
+	}
+
 
 
 
@@ -122,5 +175,11 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
  */
 RC BTreeIndex::readForward(IndexCursor& cursor, int& key, RecordId& rid)
 {
+	RC rc;
+	BTLeafNode *leafNode = new BTLeafNode;
+	leafNode -> read(cursor.pid, pf);
+	if(rc = (leafNode -> readEntry(cursor.eid, key, rid)) < 0)
+		return rc;
+	IndexCursor nextCursor;
     return 0;
 }

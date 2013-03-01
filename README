@@ -9,8 +9,10 @@ Joon-Sub Chung
 email: joonsub@ucla.edu
 
 ================== CHAGE LOG ====================
-2/22/2013 11:34 PM      Fixed return values
-2/24/2013 02:11 AM      Implemented insertAndSplit (Finished LeafNode Class)
-2/24/2013 05:09 PM      Implemented initial methods
-2/24/2013 07:21 PM      Implemented insert 
+2/28/2013 05:47 PM      Implemented insert and readForward
+2/27/2013 06:00 PM      Started BTreeIndex
 2/24/2013 09:33 PM      Implemented initialAndSplit methods (Finished NonLeafNode Class)
+2/24/2013 07:21 PM      Implemented insert 
+2/24/2013 05:09 PM      Implemented initial methods
+2/24/2013 02:11 AM      Implemented insertAndSplit (Finished LeafNode Class)
+2/22/2013 11:34 PM      Fixed return values
