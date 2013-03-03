@@ -144,7 +144,7 @@ int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageI
  * the PageId of the node and the SlotID of the index entry.
  * Note that, for range queries, we need to scan the B+tree leaf nodes.
  * For example, if the query is "key > 1000", we should scan the leaf
- * nodes starting with the key value 1000. For this reason,
+ * nodes starting  with the key value 1000. For this reason,
  * it is better to return the location of the leaf node entry 
  * for a given searchKey, instead of returning the RecordId
  * associated with the searchKey directly.
@@ -158,6 +158,22 @@ int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageI
  */
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
+	BTNonLeafNode *tempNonLeafNode; 
+	PageId tempPid = rootPid;
+	for (int i = 1; i < treeHeight; i++)
+	{
+		tempNonLeafNode = new BTNonLeafNode;
+		tempNonLeafNode -> read(tempPid, pf);
+		tempNonLeafNode -> locateChildPtr(searchKey, tempPid);
+		delete tempNonLeafNode;
+	}
+	//tempPid now pointing to leafNode
+	//locate searchKey from the leafnode
+	BTLeafNode *tempLeafNode = new BTLeafNode;
+	tempLeafNode -> read(tempPid, pf);
+	tempLeafNode -> locate(searchKey, cursor.eid);
+	cursor.pid = tempPid;
+	delete tempLeafNode;
     return 0;
 }
 
