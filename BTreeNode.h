@@ -17,10 +17,10 @@
  * BTLeafNode: The class representing a B+tree leaf node.
  */
 const int g_leafEntrySize = sizeof(int) + sizeof(RecordId);
-const int g_maxKeyCount = 85;
+const int g_maxKeyCount = 84;
 class BTLeafNode {
 public:
-    BTLeafNode () : keyCount(0) {}
+    BTLeafNode ();
     RC insert(int key, const RecordId& rid);
     RC insertAndSplit(int key, const RecordId& rid, BTLeafNode& sibling, int& siblingKey);
     RC locate(int searchKey, int& eid);
@@ -33,10 +33,11 @@ public:
     
 private:
     char buffer[PageFile::PAGE_SIZE];
-    int keyCount;
+   // int keyCount;
     RC insertToBuffer(const int key, const RecordId rid, const int eid);
     RC deleteFromBuffer(const int eid);
     bool checkFull();
+    void incKeyCout(bool increment);
     RC shift(const int eid);
 }; 
 
