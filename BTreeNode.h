@@ -131,6 +131,7 @@ private:
     bool checkFull();
     RC shift(const int loc);
     RC deleteFromBuffer(const int loc);
+    void incKeyCout(bool increment);
 }; 
 
 #endif /* BTNODE_H */

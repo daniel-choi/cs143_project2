@@ -307,6 +307,19 @@ void BTLeafNode::incKeyCout(bool increment)
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
+ * LeafNode Buffer
+ * Equivalent to int buffer[256];
+
+  256-1 = 255;
+  255/2 + 1
+ _____________________________________________________________________________________
+ |  0   |  1   |   2  |   3  |   4  |   5  |   6  | ...  | 252  | 253  | 254  |  255 |
+ | KC   | pid  | key  |  pid | key  |  pid | key  | ...  | pid  | key  | key  | pid -+---->
+ |______|______|______|______|______|______|______|______|______|______|______|______|
+
+*/
+
+/*
  * Read the content of the node from the page pid in the PageFile pf.
  * @param pid[IN] the PageId to read
  * @param pf[IN] PageFile to read from
@@ -342,7 +355,9 @@ RC BTNonLeafNode::write(PageId pid, PageFile& pf)
  */
 int BTNonLeafNode::getKeyCount()
 { 
-  return keyCount;
+  int *intBufferPtr = (int*) buffer;
+
+  return intBufferPtr[0]; 
 }
 
 
@@ -363,24 +378,24 @@ RC BTNonLeafNode::insert(int key, PageId pid)
 
   //loop until end of last pid?
   int i = 0;
-  for(; i < keyCount; i++){
+  for(; i < getKeyCount(); i++){
     if (*((bufferPtr+1) + 2*i) > key)
     {
       // key is not at the end
-      if(key != keyCount)
+      if(key != getKeyCount())
         shift(*((bufferPtr+1) + 2*i));
       
       *((bufferPtr) + 2*i) = pid;
       *((bufferPtr+1) + 2*i) = key; // inc address and assign it
 
-      keyCount ++;
+      incKeyCout(true);
       return 0;
     }
   }
   //if not within the keyCount, insert at the end.
   *((bufferPtr) + 2*i) = pid;
   *((bufferPtr+1) + 2*i) = key; // inc address and assign it
-  keyCount ++;
+  incKeyCout(true);
 
   return 0;
 }
@@ -399,12 +414,10 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
 { 
   RC rc;
 
-  int numMove = keyCount/2;
-  int numStay = keyCount - numMove;
+  int numMove = getKeyCount()/2;
+  int numStay = getKeyCount() - numMove;
 
-  if (rc = insert(key, pid) <0)
-    return rc;
-
+  int keyCount = getKeyCount();
   for (int i = keyCount-1; i >= numStay; i--)
   {
     int readKey;
@@ -413,7 +426,19 @@ RC BTNonLeafNode::insertAndSplit(int key, PageId pid, BTNonLeafNode& sibling, in
       return rc;
     if (rc = deleteFromBuffer(i) < 0)
       return rc;
-    keyCount--;
+    incKeyCout(false);
+  }
+  
+  //[KC | pid | key | pid | ... ] //[KC | -pid- | -key- | pid | ... ]
+  midKey = numMove;
+  // remove the mkey
+  deleteFromBuffer(numMove);
+
+  if (key < midKey){ // insert key in original buffer
+    insert(key, pid);
+  }
+  else{ // insert key in the sibling
+    sibling.insert(key, pid);
   }
 
   /* midKey:- //the key chosen after overflow is split.
@@ -530,5 +555,15 @@ RC BTNonLeafNode::deleteFromBuffer(const int loc)
   *(intBufferPtr + index) = -1;
   *(intBufferPtr + index + 1) = -1;
   return 0;
+}
+
+void BTNonLeafNode::incKeyCout(bool increment)
+{
+
+  int *intBufferPtr = (int*) buffer;
+  if(increment)
+    intBufferPtr[0]++;
+  else
+    intBufferPtr[0]--;
 }
 
