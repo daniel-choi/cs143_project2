@@ -171,7 +171,16 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 	//locate searchKey from the leafnode
 	BTLeafNode *tempLeafNode = new BTLeafNode;
 	tempLeafNode -> read(tempPid, pf);
-	tempLeafNode -> locate(searchKey, cursor.eid);
+	bool empty;
+	do {
+		empty = false;
+		if( (tempLeafNode -> locate(searchKey, cursor.eid)) < 0 )
+		{
+			tempPid = tempLeafNode -> getNextNodePtr();
+			tempLeafNode -> read(tempPid, pf);
+			empty = true;
+		}
+	}while (empty);
 	cursor.pid = tempPid;
 	delete tempLeafNode;
     return 0;

@@ -25,6 +25,7 @@ BTLeafNode::BTLeafNode()
 {
     int *intBufferPtr = (int *)buffer;
     intBufferPtr[0] = 0;
+    intBufferPtr[255] = NULL;
 }
 /*
  * Read the content of the node from the page pid in the PageFile pf.
