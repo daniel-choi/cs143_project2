@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <iostream>
 #include <fstream>
+#include <climits>
 #include "Bruinbase.h"
 #include "SqlEngine.h"
 
@@ -57,11 +58,8 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
     count = 0;
     if(index) 
     {
-        // read the tuple
-
-        // Conditions
         int start = -1;
-        int end = -1;
+        int end = INT_MAX;
         int eql = -1;
         bool notEqual = true; 
         for (unsigned i = 0; i < cond.size(); i++) {
@@ -98,38 +96,61 @@ RC SqlEngine::select(int attr, const string& table, const vector<SelCond>& cond)
                 //case SelCond::NE:
             }
         }
-            //int condKey = atoi(cond[i].value);
-            // IndexCursor cursor;
-            // switch (cond[i].comp) {
-            //     case SelCond::EQ:
-            //     bIndex.locate(condKey, cursor);
-            //     bIndex.readForward(cursor, key, rid);
-            //     if ((rc = rf.read(rid, key, value)) < 0) {
-            //         fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
-            //         goto exit_select;
-            //     }
-            //     break;
-            //     case SelCond::NE:
-            //     if (diff == 0) goto next_tuple;
-            //     break;
-            //     case SelCond::GT:
-            //     if (diff <= 0) goto next_tuple;
-            //     break;
-            //     case SelCond::LT:
-            //     if (diff >= 0) goto next_tuple;
-            //     break;
-            //     case SelCond::GE:
-            //     if (diff < 0) goto next_tuple;
-            //     break;
-            //     case SelCond::LE:
-            //     if (diff > 0) goto next_tuple;
-            //     break;
-            // }
+        fprintf(stdout, "start: %d\n end: %d\n", start, end );
+
+        if(notEqual) {
+            IndexCursor cursor;
+            if(start != -1 && end != INT_MAX) {
+                for (int i = start; i <= end; i++) {
+                    // i = searchKey   
+                    if((bIndex.locate(i, cursor)) == 0) {
+                        bIndex.readForward(cursor, key, rid); 
+                        if( key == i) {        
+                            if ((rc = rf.read(rid, key, value)) < 0) {
+                                fprintf(stderr, "Error: while reading a tuple from table %s\n", table.c_str());
+                                goto exit_select;
+                            }
+                            // print the tuple 
+                            switch (attr) {
+                                case 1:  // SELECT key
+                                fprintf(stdout, "%d\n", key);
+                                break;
+                                case 2:  // SELECT value
+                                fprintf(stdout, "%s\n", value.c_str());
+                                break;
+                                case 3:  // SELECT *
+                                fprintf(stdout, "%d '%s'\n", key, value.c_str());
+                                break;
+                            }
+                        }
+                    }
+
+                }
+            } else if (start != -1 && end == INT_MAX) {
+                int i = start;
+                for (;;) {
+
+                    // If it reaches NULL,  break out
+                }
+            } else if(start == -1 && end != INT_MAX) {
+                for (int i = 0; i <= end; i++) {
+
+                }
+            } else  {
+                int i = 0;
+                // select * from movie; No condition; go through all the tuples
+                for (;;) {
+                    //If it reaches NULL, break out
+                }
+
+            }
 
 
-
-
+        }
     } 
+                    //     
+            //     bIndex.readForward(cursor, key, rid);
+
     else {
         rid.pid = rid.sid = 0;
         while (rid < rf.endRid()) {
@@ -253,9 +274,11 @@ RC SqlEngine::load(const string& table, const string& loadfile, bool index)
         }
 
     }
+
     exit_select:
     inputFile.close();
     rf.close();
+    bIndex.close();
     return rc;
 }
 

@@ -120,6 +120,8 @@ public:
      * @return 0 if successful. Return an error code if there is an error.
      */
     RC write(PageId pid, PageFile& pf);
+
+   // void insertTreeHeightRootPid(int treeHeight, PageId rootPid);
     
 private:
     /**
@@ -127,7 +129,7 @@ private:
      * that contains the node.
      */
     char buffer[PageFile::PAGE_SIZE];
-    int keyCount;
+    //int keyCount;
     bool checkFull();
     RC shift(const int loc);
     RC deleteFromBuffer(const int loc);

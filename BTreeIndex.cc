@@ -34,6 +34,27 @@ RC BTreeIndex::open(const string& indexname, char mode)
 	if ((rc = pf.open(indexname, mode)) < 0) {
     	return rc;
  	}
+
+ 	if(pf.endPid() == 0)
+ 	{
+ 		rootPid = -1;
+ 		treeHeight = 0;
+ 		char buffer[PageFile::PAGE_SIZE];
+	 	int* intBufPtr = (int*) buffer;
+		intBufPtr[0] = rootPid;
+		intBufPtr[1] = treeHeight;
+		pf.write(0, buffer);
+
+
+ 	}
+ 	else {
+ 		 	// READ ROOTPID AND TREEHEIGHT
+	 	char buffer[PageFile::PAGE_SIZE];
+	 	pf.read(0, buffer);
+	 	int* intBufPtr = (int*) buffer;
+	 	rootPid = intBufPtr[0];
+	 	treeHeight = intBufPtr[1];
+ 	}
 	return 0;
 }
 
@@ -43,6 +64,11 @@ RC BTreeIndex::open(const string& indexname, char mode)
  */
 RC BTreeIndex::close()
 {
+	char buffer[PageFile::PAGE_SIZE];
+ 	int* intBufPtr = (int*) buffer;
+	intBufPtr[0] = rootPid;
+	intBufPtr[1] = treeHeight;
+	pf.write(0, buffer);
 	RC rc;
 	if ((rc = pf.close()) < 0) {
     	return rc;
@@ -60,7 +86,7 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 {
 	if(treeHeight == 0) {
 		createRoot(key, rid);
-		treeHeight++;
+		return 0;
 	}
 	PageId siblingPid;
 	int newRootKey;
@@ -71,7 +97,10 @@ RC BTreeIndex::insert(int key, const RecordId& rid)
 		rootPid = pf.endPid();
 		newRoot -> write(rootPid, pf);
 		treeHeight++;
+
 	}
+	fprintf (stderr, "newRootKey: %d\n", newRootKey);
+	fprintf (stderr, "treeHeight: %d\n", treeHeight);
 
     return 0;
 }
@@ -84,11 +113,15 @@ RC BTreeIndex::createRoot(const int key, const RecordId &rid)
 	BTLeafNode *ln1 = new BTLeafNode;
 	BTLeafNode *ln2 = new BTLeafNode;
 	ln2->insert(key, rid);
-	root->initializeRoot(1, key, 2);
-	ln1->setNextNodePtr(2);
+	root->initializeRoot(2, key, 3);
+	ln1->setNextNodePtr(3);
 	root->write(rootPid, pf);
-	ln1->write(1, pf);
-	ln2->write(2, pf);
+	//fprintf (stderr, "rootPid: %d\n", rootPid);
+	ln1->write(2, pf);
+	ln2->write(3, pf);
+	//fprintf(stderr, "Root created\n");
+	treeHeight+=2;
+
 }
 
 int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageId pid, PageId &siblingPid)
@@ -108,11 +141,14 @@ int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageI
 				tempNode -> insertAndSplit (siblingKey, siblingPid, *siblingNode, midKey);
 				siblingPid = pf.endPid();
 				siblingNode -> write(siblingPid, pf);
+				tempNode -> write(pid, pf);
 
 				return midKey;
 			}
-			else
+			else {
+				tempNode -> write(pid, pf);
 				return 0;
+			}
 		}
 
 	}
@@ -129,11 +165,15 @@ int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageI
 			siblingPid = pf.endPid();
 			tempNode -> setNextNodePtr(siblingPid);
 			siblingNode -> write(siblingPid, pf);
-
+			tempNode -> write (pid, pf);
+			
 			return siblingKey;
 		}
-		else
+		else {
+			tempNode -> write(pid, pf);
+			
 			return 0;
+		}
 	}
 }
 
@@ -158,10 +198,16 @@ int BTreeIndex::insertionHelper(const int key, const RecordId &rid, int n, PageI
  */
 RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 {
+	// fprintf(stderr, "11\n");
 	BTNonLeafNode *tempNonLeafNode; 
 	PageId tempPid = rootPid;
+	// fprintf(stderr, "rootPid: %d\n", rootPid);
+	// fprintf(stderr, "12\n");
+	// fprintf(stderr, "treeHeight: %d\n", treeHeight);
+
 	for (int i = 1; i < treeHeight; i++)
 	{
+		// fprintf(stderr, "13\n");
 		tempNonLeafNode = new BTNonLeafNode;
 		tempNonLeafNode -> read(tempPid, pf);
 		tempNonLeafNode -> locateChildPtr(searchKey, tempPid);
@@ -169,17 +215,24 @@ RC BTreeIndex::locate(int searchKey, IndexCursor& cursor)
 	}
 	//tempPid now pointing to leafNode
 	//locate searchKey from the leafnode
+	// fprintf(stderr, "14\n");
 	BTLeafNode *tempLeafNode = new BTLeafNode;
 	tempLeafNode -> read(tempPid, pf);
 	bool empty;
 	do {
+		// fprintf(stderr, "15\n");
 		empty = false;
+		// fprintf(stderr, "searchKey: %d\n", searchKey);
 		if( (tempLeafNode -> locate(searchKey, cursor.eid)) < 0 )
 		{
+			// fprintf(stderr, "16\n");
 			tempPid = tempLeafNode -> getNextNodePtr();
+			if(tempPid == -1)
+				return RC_NO_SUCH_RECORD;
 			tempLeafNode -> read(tempPid, pf);
 			empty = true;
 		}
+		// fprintf(stderr, "17\n");
 	}while (empty);
 	cursor.pid = tempPid;
 	delete tempLeafNode;

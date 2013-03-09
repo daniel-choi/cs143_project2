@@ -25,7 +25,7 @@ BTLeafNode::BTLeafNode()
 {
     int *intBufferPtr = (int *)buffer;
     intBufferPtr[0] = 0;
-    intBufferPtr[255] = NULL;
+    intBufferPtr[255] = -1;
 }
 /*
  * Read the content of the node from the page pid in the PageFile pf.
@@ -83,6 +83,7 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
     return RC_NODE_FULL;
   // Set eid to last buffer
   int eidCandidate = getKeyCount();
+  int *intBufferPtr2 = (int*) buffer;
   for (int i = 0; i < getKeyCount(); i++) {
     int readKey;
     RecordId readRid;
@@ -95,6 +96,7 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
       break;
     }
   }
+  
   // If new key is the biggest, put at the end.
   // If not shift all the entires by one and put it in the eidCandidate
   if(eidCandidate != getKeyCount())
@@ -104,7 +106,6 @@ RC BTLeafNode::insert(int key, const RecordId& rid)
 
   // Update key count
   incKeyCout(true);
-
   return 0; 
 }
 
@@ -161,7 +162,7 @@ RC BTLeafNode::locate(int searchKey, int& eid)
   RC rc; 
   // If there is no entry or if eid is not valid, or if eid is larger than key count
   // Return error
-  if (getKeyCount() <=0 || eid < 0 || eid >= getKeyCount())
+  if (getKeyCount() <=0)
     return RC_INVALID_CURSOR;
 
   // Loop through entries and search for the key that are greater or equal to searchKey
@@ -197,7 +198,7 @@ RC BTLeafNode::readEntry(int eid, int& key, RecordId& rid)
   int *intBufferPtr = (int *) buffer;
 
   // Read from the buffer
-  int index = eid * 3;
+  int index = eid * 3 + 1;
   key = *(intBufferPtr + index);
   rid.pid = *(intBufferPtr + index + 1);
   rid.sid = *(intBufferPtr + index + 2);
@@ -240,6 +241,8 @@ RC BTLeafNode::setNextNodePtr(PageId pid)
 //Return 0 if success -1 otherwise
 RC BTLeafNode::insertToBuffer(const int key, const RecordId rid, const int eid)
 {
+  if(eid < 0)
+    return RC_INVALID_CURSOR;
   if(checkFull())
     return RC_NODE_FULL;
   int* intBufferPtr = (int*) buffer;
@@ -260,6 +263,8 @@ bool BTLeafNode::checkFull()
 //Shifts all the elements from eid by one entry
 RC BTLeafNode::shift(const int eid)
 {
+  if(eid < 0)
+    return RC_INVALID_CURSOR;
   RC rc;
   int * intBufferPtr = (int *)buffer;
   for(int i = getKeyCount()-1; i >= eid; i--) 
@@ -296,8 +301,22 @@ void BTLeafNode::incKeyCout(bool increment)
 {
 
   int *intBufferPtr = (int*) buffer;
-  if(increment)
+  if(increment) {
+    
     intBufferPtr[0]++;
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr:%d\n", intBufferPtr[0]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr1:%d\n", intBufferPtr[1]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr4:%d\n", intBufferPtr[4]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr7:%d\n", intBufferPtr[7]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr10:%d\n", intBufferPtr[10]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr13:%d\n", intBufferPtr[13]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr16:%d\n", intBufferPtr[16]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr19:%d\n", intBufferPtr[19]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr22:%d\n", intBufferPtr[22]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr25:%d\n", intBufferPtr[25]);
+    // fprintf(stderr, "Inside incKeyCount, intBufferPtr28:%d\n", intBufferPtr[28]);
+
+  }
   else
     intBufferPtr[0]--;
 }
@@ -315,7 +334,7 @@ void BTLeafNode::incKeyCout(bool increment)
   255/2 + 1
  _____________________________________________________________________________________
  |  0   |  1   |   2  |   3  |   4  |   5  |   6  | ...  | 252  | 253  | 254  |  255 |
- | KC   | pid  | key  |  pid | key  |  pid | key  | ...  | pid  | key  | key  | pid -+---->
+ | KC   | pid  | key  |  pid | key  |  pid | key  | ...  | key  | pid  | key  | pid -+---->
  |______|______|______|______|______|______|______|______|______|______|______|______|
 
 */
@@ -379,23 +398,18 @@ RC BTNonLeafNode::insert(int key, PageId pid)
 
   //loop until end of last pid?
   int i = 0;
-  for(; i < getKeyCount(); i++){
-    if (*((bufferPtr+1) + 2*i) > key)
-    {
+  for(; i < getKeyCount(); ++i){
+    if (*((bufferPtr+2) + 2*i) > key)
+    { 
       // key is not at the end
-      if(key != getKeyCount())
-        shift(*((bufferPtr+1) + 2*i));
-      
-      *((bufferPtr) + 2*i) = pid;
-      *((bufferPtr+1) + 2*i) = key; // inc address and assign it
+      shift(i);
+      break;
 
-      incKeyCout(true);
-      return 0;
     }
   }
-  //if not within the keyCount, insert at the end.
-  *((bufferPtr) + 2*i) = pid;
-  *((bufferPtr+1) + 2*i) = key; // inc address and assign it
+      //if not within the keyCount, insert at the end.
+  *((bufferPtr+2) + 2*i) = key;
+  *((bufferPtr+3) + 2*i) = pid; // inc address and assign it
   incKeyCout(true);
 
   return 0;
@@ -465,6 +479,7 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
   */
   //Convert buffer pointer from char to int
   int *bufferPtr = (int *) buffer;
+  int keyCount = getKeyCount();
 
   // if no key, no point in travesing empty
   if(keyCount <= 0)
@@ -476,14 +491,14 @@ RC BTNonLeafNode::locateChildPtr(int searchKey, PageId& pid)
   int i = 0;
   for(; i < keyCount; i++){
     // key found
-    if (*((bufferPtr+1) + 2*i) > searchKey)
+    if (*((bufferPtr+2) + 2*i) > searchKey)
     {
-      pid = *((bufferPtr) + 2*i);
+      pid = *((bufferPtr+1) + 2*i);
       return 0;
     }
   }
   // gone everywhere and still could not find key greater than searchkey.
-  pid = *((bufferPtr) + 2*i);
+  pid = *((bufferPtr+1) + 2*i);
   return 0; 
 }
 
@@ -506,13 +521,22 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
   //Convert buffer pointer from char to int
   int *bufferPtr = (int *) buffer;
 
-  *bufferPtr = pid1;
-  *(bufferPtr+1) = key; // inc address and assign it
-  *(bufferPtr+2) = pid2; // inc address and assign it
-  
-  keyCount++; // first root insert
+  *(bufferPtr+1) = pid1;
+  *(bufferPtr+2) = key; // inc address and assign it
+  *(bufferPtr+3) = pid2; // inc address and assign it
+  incKeyCout(true);
+   // first root insert
   return 0; 
 }
+
+
+// void BTNonLeafNode::insertTreeHeightRootPid(int treeHeight, PageId rootPid)
+// {
+//   int *bufferPtr = (int *) buffer;
+//   bufferPtr[254] = treeHeight;
+//   bufferPtr[255] = rootPid;
+// }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 //                            BTNonLeafNode Helper Functions                     //
@@ -525,6 +549,7 @@ RC BTNonLeafNode::initializeRoot(PageId pid1, int key, PageId pid2)
 bool BTNonLeafNode::checkFull()
 {
   //Max key count, excluding last entry of the leaf node (page id)
+  int keyCount = getKeyCount();
   if(keyCount >= g_maxKeyCount_NonLeafNode)
     return true;
   else
@@ -536,9 +561,10 @@ RC BTNonLeafNode::shift(const int loc)
 {
   RC rc;
   int * intBufferPtr = (int *)buffer;
+  int keyCount = getKeyCount();
   for(int i = keyCount-1; i >= loc; i--) 
   {
-    int index = loc*2;
+    int index = loc*2+2;
     *(intBufferPtr + index + 2) = *(intBufferPtr + index); 
     *(intBufferPtr + index + 3) = *(intBufferPtr + index + 1);
   }
@@ -548,7 +574,7 @@ RC BTNonLeafNode::shift(const int loc)
 RC BTNonLeafNode::deleteFromBuffer(const int loc)
 {
   RC rc;
-  if(loc >= keyCount)
+  if(loc >= getKeyCount())
     return RC_NO_SUCH_RECORD;
 
   int* intBufferPtr = (int*) buffer;
